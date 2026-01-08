@@ -1,0 +1,15 @@
+local config = {}
+
+config.reactor_logic_port_id = "fissionReactorLogicAdapter_0" -- the reactor logic port id for reactor control
+config.redstone_reactor_start_side = "left" -- the side to check for a redstone signal to start the reactor. accepted values are: "front", "back", "left", "right", "top", "bottom"
+config.e_coolant_relay_id = "redstone_relay_3" -- the redstone relay id for the emergency cooling, make sure you have a torch to invert the signal as it activates the redstone signal when requesting emergency cooling.
+config.e_coolant_relay_side = "front" -- the side to toggle the emergency cooling reservoir injection on the redstone relay. accepted values are the same as redstone_reactor_start_side. note that the side with the "face" is the front, not the side thats facing to you when placing
+config.desired_burn_rate = 1 -- in millibuckets per tick
+config.startup_timeout = 0.5 -- the timeframe in seconds between reactor startup and when rate of change protection activates, adjust this if your reactor takes longer to start
+config.rate_of_change_margin = 2 -- how high the temperature difference has to be for rate of change protection to trigger, leave it at the default unless your reactor temperature varies a lot
+config.e_coolant_disable = 450 -- the temperature at which emergency cooling gets disabled after it has been triggered
+config.overheat_cutoff = 1200 -- leave this at the default unless you know what you're doing
+config.redstone_trip_reset_side = "front" -- the side on the computer to check for trip reset redstone signal. accepted values are the same as redstone_reactor_start_side
+config.minimum_required_coolant = 30 -- minimum required coolant in the tank in percent
+
+return config

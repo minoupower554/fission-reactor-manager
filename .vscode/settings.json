@@ -1,0 +1,14 @@
+{
+    "Lua.runtime.builtin": {
+        "os": "disable",
+        "io": "disable"
+    },
+    "Lua.runtime.version": "Lua 5.2",
+    "Lua.workspace.library": [
+        "${workspaceFolder}/types" // my language server freaking out without this
+    ],
+    "cSpell.words": [
+        "millibuckets",
+        "rootfs"
+    ]
+}
