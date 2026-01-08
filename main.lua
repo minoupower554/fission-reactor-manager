@@ -9,7 +9,7 @@ local e_coolant_relay = peripheral.wrap(c.e_coolant_relay_id)
 ---@cast reactor ReactorPeripheral
 ---@cast e_coolant_relay RedstoneRelayPeripheral
 
-local function main()
+local function reactor_manager()
     print("running...")
 
     if reactor.getStatus() then
@@ -166,6 +166,12 @@ local function crash_protection(err)
         handle.writeLine(tostring(err))
         handle.close()
     end
+end
+
+local function main()
+    local reactor_routine = coroutine.create(reactor_manager)
+
+    
 end
 
 xpcall(main, crash_protection)
