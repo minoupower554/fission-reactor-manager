@@ -168,10 +168,16 @@ local function crash_protection(err)
     end
 end
 
-local function main()
-    local reactor_routine = coroutine.create(reactor_manager)
-
+local function turbine_manager()
     
+end
+
+local function gui_manager()
+    
+end
+
+local function main()
+    parallel.waitForAll(reactor_manager, turbine_manager, gui_manager)
 end
 
 xpcall(main, crash_protection)
