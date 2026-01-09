@@ -4,7 +4,7 @@ local c = require('config')
 local round = require('components.round')
 local trim = require('components.trim')
 
----@param level '"info"'|'"warn"'|'"error"' the log level to use, changes the colour of the field on the screen when applicable
+---@param level '"info"'|'"warn"'|'"error"'|string the log level to use, changes the colour of the field on the screen when applicable
 ---@param log_message string|'"none"' the message to log, use none for no message
 ---@param field '"reactor_temp"'|'"reactor_cool_level_percent"'|'"turbine_prod_rate"'|'"turbine_buffer_level"'|'"resistive_heater_load"'|'"trip_status"'|'"last_trip_type"'|'"roc_state"'|nil the field to edit, nil for no field edit
 ---@param value string|nil the value to set the field to, nil for no field edit
@@ -49,8 +49,6 @@ local function reactor_manager()
     local last_temp = 0
     local roc_active = false
     local e_cooling = false
-    local reactor_trip_already_logged = false
-    local not_enough_coolant_already_logged = false
 
     queue_write("info", "none", "trip_status", "no")
     queue_write("warn", "none", "roc_state", "disarmed")
@@ -75,6 +73,7 @@ local function reactor_manager()
             if not reactor.getStatus() then
                 if not trip then
                     if reactor.getCoolantFilledPercentage()>c.minimum_required_coolant/100 then
+                        queue_write("info", "starting reactor")
                         reactor.activate()
                         local timer = os.startTimer(c.startup_timeout)
                         repeat
@@ -93,9 +92,9 @@ local function reactor_manager()
             end
         else
             if reactor.getStatus() then
+                queue_write("info", "shutting down reactor")
                 queue_write("warn", "disarming rate of change protection", "roc_state", "disarmed")
                 roc_active = false
-                print("shutting down reactor")
                 reactor.scram()
             end
         end
@@ -176,7 +175,7 @@ local function crash_protection(err)
         e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
     end
     load.setEnergyUsage(0)
-    print("writing crash report, see current.log")
+    print("writing crash report, see last_crash.log")
     local info = debug.getinfo(1, "S")
     local source = info.source
     if source:sub(1,1) == "@" then
@@ -186,10 +185,7 @@ local function crash_protection(err)
         print("not running as file, writing to rootfs")
         source = "/"
     end
-    local path = fs.combine(source, "current.log")
-    if fs.exists(path) then
-        print("crash log already exists at '"..path.."'. overriding")
-    end
+    local path = fs.combine(source, "last_crash.log")
     local handle = fs.open(path, "w")
     if handle then
         handle.writeLine(tostring(err))
@@ -211,7 +207,7 @@ local function turbine_manager()
 
     while true do
         local current_energy = turbine.getEnergy()
-        queue_write("info", "none", "turbine_buffer_level", (round(current_energy/1e6, 1)).."MJ")
+        queue_write("info", "none", "turbine_buffer_level", (round(current_energy/1e6, 0.1)).."MJ")
         local fill = current_energy/max_energy
         local usage = 0
         if fill > start_frac then
@@ -221,7 +217,7 @@ local function turbine_manager()
 
         load.setEnergyUsage(usage)
         queue_write("info", "none", "resistive_heater_load", (round(usage/1e3, 0.1)).."kJ/t")
-        queue_write("info", "none", "turbine_prod_rate", (round(turbine.getProductionRate()/1e3, 1)).."kJ/t")
+        queue_write("info", "none", "turbine_prod_rate", (round(turbine.getProductionRate()/1e3, 0.1)).."kJ/t")
         os.sleep(0.05)
     end
 end
@@ -234,6 +230,20 @@ local function write_manager()
     if width ~= 29 or height ~= 12 then
         print("the screen has to be 3x2")
         error("invalid screen size")
+    end
+    local info = debug.getinfo(1, "S")
+    local source = info.source
+    if source:sub(1,1) == "@" then
+        source = source:sub(2)
+        source = fs.getDir(source)
+    else
+        print("not running as file, writing to rootfs")
+        source = "/"
+    end
+    local path = fs.combine(source, "current.log")
+    local logging, err = fs.open(path, "w")
+    if logging == nil then
+        error("failed to open log file, error message: "..err)
     end
 
     local fields = {
@@ -278,6 +288,7 @@ local function write_manager()
             end
         end
         if log_message ~= "none" then
+            logging.writeLine("["..level:upper().."]: "..log_message) ---@diagnostic disable-line -- this cannot be nil
             if c.enable_chat_box then
                 if level == "info" then
                     if c.chat_box_log_level == "info" then

@@ -2,3 +2,4 @@ fission_reactor_controller_crash.log
 types/.git
 types/.vscode
 current.log
+last_crash.log
