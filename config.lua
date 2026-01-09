@@ -2,6 +2,8 @@ local auto = "auto"
 local side = {front="front",back="back",left="left",right="right",top="top",bottom="bottom"}
 local config = {}
 
+-- IMPORTANT: all chunks where the computer and reactor operates (this includes chunks where only cables go through) have to be chunk-loaded so that the computer doesn't get killed
+
 config.reactor_logic_port_id = "fissionReactorLogicAdapter_0" -- the reactor logic port id for reactor control
 config.e_coolant_relay_id = "redstone_relay_3" -- the redstone relay id for the emergency cooling, make sure you have a torch to invert the signal as it activates the redstone signal when requesting emergency cooling.
 config.e_coolant_relay_side = side.front -- the side to toggle the emergency cooling reservoir injection on the redstone relay. accepted values are the same as redstone_reactor_start_side. note that the side with the "face" is the front, not the side thats facing to you when placing
