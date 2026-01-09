@@ -121,19 +121,17 @@ local function reactor_manager()
             end
         end
 
-        if not roc_active then
-            goto rate_of_change_skip
-        end
-        if temp-last_temp>c.rate_of_change_margin then
-            if trip == false then
-                trip = true
-                e_cooling = true
-                queue_write("error", "none", "roc_state", "active")
-                queue_write("info", "rate of change protection trip", "last_trip_type", "rate of change margin exceeded")
-                queue_write("info", "temperature delta: "..temp-last_temp)
+        if roc_active then
+            if temp-last_temp>c.rate_of_change_margin then
+                if trip == false then
+                    trip = true
+                    e_cooling = true
+                    queue_write("error", "none", "roc_state", "active")
+                    queue_write("info", "rate of change protection trip", "last_trip_type", "rate of change margin exceeded")
+                    queue_write("info", "temperature delta: "..temp-last_temp)
+                end
             end
         end
-        ::rate_of_change_skip::
 
         if e_cooling then
             e_coolant_relay.setOutput(c.e_coolant_relay_side, true)
