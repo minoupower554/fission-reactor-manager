@@ -5,7 +5,7 @@ local round = require('components.round')
 
 ---@param level '"info"'|'"warn"'|'"error"' the log level to use, changes the colour of the field on the screen when applicable
 ---@param log_message string|'"none"' the message to log, use none for no message
----@param field '"reactor_temp"'|'"reactor_cool_level_percent"'|'"turbine_prod_rate"'|'"turbine_buffer_level"'|'"resistive_heater_load"'|nil the field to edit, nil for no field edit
+---@param field '"reactor_temp"'|'"reactor_cool_level_percent"'|'"turbine_prod_rate"'|'"turbine_buffer_level"'|'"resistive_heater_load"'|'"trip_status"'|'"last_trip_type"'|'"roc_state"'|nil the field to edit, nil for no field edit
 ---@param value string|nil the value to set the field to, nil for no field edit
 local function queue_write(level, log_message, field, value)
     os.queueEvent("screen_write", level, log_message, field, value)
@@ -47,11 +47,15 @@ local function reactor_manager()
     local trip_reset_already_logged = false
     local not_enough_coolant_already_logged = false
 
+    queue_write("info", "none", "trip_status", "no")
+    queue_write("warn", "none", "roc_state", "disarmed")
+
     while true do
         if rs.getInput(c.redstone_trip_reset_side) then
             if trip then
-                print("trip reset successfully")
                 trip = false
+                queue_write("info", "trip reset successfully", "trip_status", "no")
+                queue_write("warn", "none", "roc_state", "disarmed")
                 trip_reset_already_logged = true
             else
                 if not trip_reset_already_logged then
@@ -61,6 +65,7 @@ local function reactor_manager()
             end
         end
         if trip then
+            queue_write("error", "none", "trip_status", "yes")
             if reactor.getStatus() then
                 reactor.scram()
             end
@@ -79,7 +84,7 @@ local function reactor_manager()
                             local _, id = os.pullEvent("timer")
                         until id == timer
                         roc_active = true
-                        print("rate of change protection armed")
+                        queue_write("info", "rate of change protection armed", "roc_state", "armed")
                         temp = reactor.getTemperature()
                         last_temp = temp
                     else
@@ -97,7 +102,7 @@ local function reactor_manager()
             end
         else
             if reactor.getStatus() then
-                print("disarming rate of change protection")
+                queue_write("warn", "disarming rate of change protection", "roc_state", "disarmed")
                 roc_active = false
                 print("shutting down reactor")
                 reactor.scram()
@@ -112,7 +117,7 @@ local function reactor_manager()
             if trip == false then
             trip = true
             e_cooling = true
-            print("temperature threshold trip")
+            queue_write("info", "temperature threshold trip", "last_trip_type", "temperature threshold exceeded")
             end
         end
 
@@ -123,8 +128,9 @@ local function reactor_manager()
             if trip == false then
                 trip = true
                 e_cooling = true
-                print("rate of change protection trip")
-                print("temperature delta:", temp-last_temp)
+                queue_write("error", "none", "roc_state", "active")
+                queue_write("info", "rate of change protection trip", "last_trip_type", "rate of change margin exceeded")
+                queue_write("info", "temperature delta: "..temp-last_temp)
             end
         end
         ::rate_of_change_skip::
@@ -166,7 +172,7 @@ local function crash_protection(err)
         e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
     end
     load.setEnergyUsage(0)
-    print("writing crash report, see current.log if the error message exceeds the frame size")
+    print("writing crash report, see current.log")
     local info = debug.getinfo(1, "S")
     local source = info.source
     if source:sub(1,1) == "@" then
@@ -225,24 +231,45 @@ local function write_manager()
         error("invalid screen size")
     end
 
-    local fields = {reactor_temp="0N/A", reactor_cool_level_percent="0N/A", turbine_prod_rate="0N/A", turbine_buffer_level="0N/A", resistive_heater_load="0N/A"}
-    local pretty_print = {reactor_temp="Reactor Temperature: ", 
-        reactor_cool_level_percent="Reactor Coolant Level: ", 
-        turbine_prod_rate="Turbine Production: ", 
-        turbine_buffer_level="Turbine Power Level: ", 
-        resistive_heater_load="Dummy Load Usage: "
+    local fields = {
+        {reactor_temp="0N/A"},
+        {reactor_cool_level_percent="0N/A"},
+        {turbine_prod_rate="0N/A"},
+        {turbine_buffer_level="0N/A"},
+        {resistive_heater_load="0N/A"},
+        {"space"},
+        {roc_state="0N/A"},
+        {trip_status="0N/A"},
+        {last_trip_type="0N/A"}
+    }
+    local pretty_print = {reactor_temp="Reactor Temperature: ",
+        reactor_cool_level_percent="Reactor Coolant Level: ",
+        turbine_prod_rate="Turbine Production: ",
+        turbine_buffer_level="Turbine Power Level: ",
+        resistive_heater_load="Dummy Load Usage: ",
+        trip_status="Reactor Trip: ",
+        last_trip_type="Last Reactor Trip: ",
+        roc_state="RoC Prot: "
     }
 
     while true do
         screen.setCursorPos(1, 1)
         local _, level, log_message, field, value = os.pullEvent("screen_write")
         if field then
+            local prefix
             if level == "info" then
-                fields[field] = "0"..value
+                prefix = "0"
             elseif level == "warn" then
-                fields[field] = "1"..value
+                prefix = "1"
             else
-                fields[field] = "e"..value
+                prefix = "e"
+            end
+
+            for _, entry in ipairs(fields) do
+                if entry[field] ~= nil then
+                    entry[field] = prefix..value
+                    break
+                end
             end
         end
         if log_message ~= "none" then
@@ -258,16 +285,42 @@ local function write_manager()
                 term.setTextColor(colors.white)
             end
         end
-
-        local i = 0
         screen.clear()
-        for k, v in pairs(fields) do
-            i = i + 1
-            screen.setCursorPos(1, i)
-            local str = v:sub(2)
-            local print_string = pretty_print[k]..str
-            local blit = v:sub(1, 1):rep(print_string:len())
-            screen.blit(print_string, blit, ("f"):rep(print_string:len()))
+        for i, v in ipairs(fields) do
+            for k, v in pairs(v) do
+                if type(k) == "number" then -- for empty lines
+                    goto continue
+                end
+                screen.setCursorPos(1, i)
+                local str = v:sub(2)
+                local print_string = pretty_print[k]..str
+                local blit = v:sub(1, 1)
+                if print_string:len() > width then
+                    local split = {}
+                    local total_length = 0
+                    for part in print_string:gmatch("([^ ]+)") do
+                        part = part.." "
+                        total_length = total_length+part:len()
+                        if total_length > width then
+                            table.insert(split, "newline_abcd1234randomcharacterssotheresnochanceofitclashing")
+                            total_length = 0
+                        end
+                        table.insert(split, part)
+                    end
+                    for _, v in ipairs(split) do
+                        if v == "newline_abcd1234randomcharacterssotheresnochanceofitclashing" then
+                            local _, y = screen.getCursorPos()
+                            screen.setCursorPos(1, y+1)
+                            goto continue_multiline_blit
+                        end
+                        screen.blit(v, blit:rep(v:len()), ("f"):rep(v:len()))
+                        ::continue_multiline_blit::
+                    end
+                else
+                    screen.blit(print_string, blit:rep(print_string:len()), ("f"):rep(print_string:len()))
+                end
+                ::continue::
+            end
         end
     end
 end
