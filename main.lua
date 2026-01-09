@@ -75,29 +75,20 @@ local function reactor_manager()
             if not reactor.getStatus() then
                 if not trip then
                     if reactor.getCoolantFilledPercentage()>c.minimum_required_coolant/100 then
-                        reactor_trip_already_logged = false
-                        not_enough_coolant_already_logged = false
-                        queue_write("warn", "starting reactor")
                         reactor.activate()
                         local timer = os.startTimer(c.startup_timeout)
                         repeat
                             local _, id = os.pullEvent("timer")
                         until id == timer
                         roc_active = true
-                        queue_write("info", "rate of change protection armed", "roc_state", "armed")
+                        queue_write("warn", "rate of change protection armed", "roc_state", "armed")
                         temp = reactor.getTemperature()
                         last_temp = temp
                     else
-                        if not not_enough_coolant_already_logged then
-                            print("the reactor does not have enough coolant, refusing startup")
-                            not_enough_coolant_already_logged = true
-                        end
+                        queue_write("warn", "the reactor does not have enough coolant, refusing startup")
                     end
                 else
-                    if not reactor_trip_already_logged then
-                        print("the reactor is tripped, refusing startup")
-                        reactor_trip_already_logged = true
-                    end
+                    queue_write("warn", "the reactor is tripped, refusing startup")
                 end
             end
         else
@@ -151,7 +142,7 @@ local function reactor_manager()
                 e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
             end
         end
-        os.sleep(0)
+        os.sleep(0.05)
     end
 end
 
@@ -231,7 +222,7 @@ local function turbine_manager()
         load.setEnergyUsage(usage)
         queue_write("info", "none", "resistive_heater_load", (round(usage/1e3, 0.1)).."kJ/t")
         queue_write("info", "none", "turbine_prod_rate", (round(turbine.getProductionRate()/1e3, 1)).."kJ/t")
-        os.sleep(0)
+        os.sleep(0.05)
     end
 end
 
