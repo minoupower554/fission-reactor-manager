@@ -23,5 +23,6 @@ config.enable_chat_box = true -- whether to send messages via an advanced periph
 config.chatbox_id = "chatBox_0" -- the side or id of the chat box to use
 config.username = "minoupower554" -- the username to send the message to, it does not send messages into the global chat
 config.chat_box_log_level = logLevel.warn -- minimum log level that gets logged
+config.chat_box_commands = true -- whether to enable chat commands ($reactor start, $reactor stop). requires chat box
 
 return config

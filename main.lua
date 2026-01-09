@@ -2,6 +2,7 @@ require('types')
 local lerp_clamp = require('components.lerp_clamp')
 local c = require('config')
 local round = require('components.round')
+local trim = require('components.trim')
 
 ---@param level '"info"'|'"warn"'|'"error"' the log level to use, changes the colour of the field on the screen when applicable
 ---@param log_message string|'"none"' the message to log, use none for no message
@@ -150,6 +151,7 @@ local function reactor_manager()
                 e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
             end
         end
+        os.sleep(0)
     end
 end
 
@@ -229,6 +231,7 @@ local function turbine_manager()
         load.setEnergyUsage(usage)
         queue_write("info", "none", "resistive_heater_load", (round(usage/1e3, 0.1)).."kJ/t")
         queue_write("info", "none", "turbine_prod_rate", (round(turbine.getProductionRate()/1e3, 1)).."kJ/t")
+        os.sleep(0)
     end
 end
 
@@ -379,8 +382,36 @@ local function press_manager()
     end
 end
 
+local function chat_command_handler()
+    while true do
+        local _, user, msg, _, hidden, _ = os.pullEvent("chat")
+        if user:lower() == c.username and hidden then ---@diagnostic disable-line
+            msg = trim(msg)
+            if msg == "reactor start" then
+                if not reactor_state then
+                    reactor_state = true
+                    chatbox.sendMessageToPlayer("reactor starting", c.username, "reactor")
+                else
+                    chatbox.sendMessageToPlayer("reactor already running", c.username, "reactor")
+                end
+            elseif msg == "reactor stop" then
+                if reactor_state then
+                    reactor_state = false
+                    chatbox.sendMessageToPlayer("reactor shutting down", c.username, "reactor")
+                else
+                    chatbox.sendMessageToPlayer("reactor not running", c.username, "reactor")
+                end
+            end
+        end
+    end
+end
+
 local function main()
-    parallel.waitForAll(reactor_manager, turbine_manager, write_manager, press_manager)
+    if c.enable_chat_box and c.chat_box_commands then
+        parallel.waitForAll(reactor_manager, turbine_manager, write_manager, press_manager, chat_command_handler)
+    else
+        parallel.waitForAll(reactor_manager, turbine_manager, write_manager, press_manager)
+    end
 end
 
 xpcall(main, crash_protection)
