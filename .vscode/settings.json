@@ -3,7 +3,7 @@
         "os": "disable",
         "io": "disable"
     },
-    "Lua.runtime.version": "Lua 5.2",
+    "Lua.runtime.version": "Lua 5.3",
     "Lua.workspace.library": [
         "${workspaceFolder}/types" // my language server freaking out without this
     ],
