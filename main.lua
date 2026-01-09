@@ -16,11 +16,13 @@ local e_coolant_relay = peripheral.wrap(c.e_coolant_relay_id)
 local turbine = peripheral.wrap(c.turbine_valve_id)
 local load = peripheral.wrap(c.resistive_heater_id)
 local screen = peripheral.wrap(c.reactor_display)
+local chatbox = peripheral.wrap(c.chatbox_id)
 ---@cast reactor ReactorPeripheral
 ---@cast e_coolant_relay RedstoneRelayPeripheral
 ---@cast turbine TurbinePeripheral
 ---@cast load ResistiveHeaterPeripheral
 ---@cast screen MonitorPeripheral
+---@cast chatbox ChatBoxPeripheral
 
 local trip_reset = false -- im sure using global state wont bite me later
 local reactor_state = false
@@ -74,7 +76,7 @@ local function reactor_manager()
                     if reactor.getCoolantFilledPercentage()>c.minimum_required_coolant/100 then
                         reactor_trip_already_logged = false
                         not_enough_coolant_already_logged = false
-                        print("starting reactor")
+                        queue_write("warn", "starting reactor")
                         reactor.activate()
                         local timer = os.startTimer(c.startup_timeout)
                         repeat
@@ -119,9 +121,10 @@ local function reactor_manager()
 
         if temp>=c.overheat_cutoff then
             if trip == false then
-            trip = true
-            e_cooling = true
-            queue_write("info", "temperature threshold trip", "last_trip_type", "Temperature Threshold exceeded")
+                trip = true
+                e_cooling = true
+                queue_write("info", "none", "last_trip_type", "Temperature Threshold exceeded")
+                queue_write("error", "temperature threshold trip")
             end
         end
 
@@ -131,7 +134,8 @@ local function reactor_manager()
                     trip = true
                     e_cooling = true
                     queue_write("error", "none", "roc_state", "active")
-                    queue_write("info", "rate of change protection trip", "last_trip_type", "Rate of Change Margin exceeded")
+                    queue_write("error", "rate of change protection trip")
+                    queue_write("info", "none", "last_trip_type", "Rate of Change Margin exceeded")
                     queue_write("info", "temperature delta: "..temp-last_temp)
                 end
             end
@@ -164,7 +168,12 @@ local function crash_protection(err)
         load.setEnergyUsage(0)
         return
     end
-    print("fatal: the main script crashed. error: "..tostring(err))
+    local msg = "fatal: the main script crashed. error: "..tostring(err)
+    print(msg)
+    if c.enable_chat_box then
+        local serialized = textutils.serializeJSON({text=msg, color="red"})
+        chatbox.sendFormattedMessageToPlayer(serialized, c.username, "reactor crash handler")
+    end
     if reactor.getStatus() then
         print("scramming reactor")
         reactor.scram()
@@ -275,6 +284,21 @@ local function write_manager()
             end
         end
         if log_message ~= "none" then
+            if c.enable_chat_box then
+                if level == "info" then
+                    if c.chat_box_log_level == "info" then
+                        chatbox.sendMessageToPlayer(log_message, c.username, "reactor")
+                    end
+                elseif level == "warn" then
+                    if c.chat_box_log_level == "warn" then
+                        local serialized = textutils.serializeJSON({text=log_message, color="gold"})
+                        chatbox.sendFormattedMessageToPlayer(serialized, c.username, "reactor")
+                    end
+                elseif level == "error" then
+                    local serialized = textutils.serializeJSON({text=log_message, color="red"})
+                    chatbox.sendFormattedMessageToPlayer(serialized, c.username, "reactor")
+                end
+            end
             if level == "info" then
                 print(log_message)
             elseif level == "warn" then

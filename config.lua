@@ -1,5 +1,6 @@
 local auto = "auto"
 local side = {front="front",back="back",left="left",right="right",top="top",bottom="bottom"}
+local logLevel = {info="info",warn="warn",severe="error"}
 local config = {}
 
 -- IMPORTANT: all chunks where the computer and reactor operates (this includes chunks where only cables go through) have to be chunk-loaded so that the computer doesn't get killed
@@ -18,5 +19,9 @@ config.resistive_heater_id = "resistiveHeater_2" -- the resistive heater id to u
 config.dummy_load_start = 80 -- at what energy level in the buffer the program should start ramping up the dummy load in percent, interpolated from this value to buffer maximum
 config.dummy_load_max = auto -- the maximum energy the load is allowed to take in MJ, this is the set load when the energy buffer is at 100%, set to auto for it to automatically use the turbine's maximum production rate
 config.reactor_display = side.top -- the screen to put the gui on, can be either a side or a network ID. the screen has to be 3x2 and an advanced screen
+config.enable_chat_box = true -- whether to send messages via an advanced peripherals chat box
+config.chatbox_id = "chatBox_0" -- the side or id of the chat box to use
+config.username = "minoupower554" -- the username to send the message to, it does not send messages into the global chat
+config.chat_box_log_level = logLevel.warn -- minimum log level that gets logged
 
 return config
