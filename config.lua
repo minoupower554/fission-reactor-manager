@@ -14,6 +14,6 @@ config.minimum_required_coolant = 30 -- minimum required coolant in the tank in 
 config.turbine_valve_id = "turbineValve_1" -- the turbine valve id to use to interact with the turbine
 config.resistive_heater_id = "resistiveHeater_2" -- the resistive heater id to use as the dummy load
 config.dummy_load_start = 80 -- at what energy level in the buffer the program should start ramping up the dummy load in percent, linearly interpolated from this value to buffer maximum
-config.dummy_load_max = 100 -- the maximum energy the load is allowed to take in MJ, this is the set load when the energy buffer is at 100%, will warn if its below the maximum production of the turbine
+config.dummy_load_max = 3 -- the maximum energy the load is allowed to take in MJ, this is the set load when the energy buffer is at 100%, will warn if its below the maximum production of the turbine
 
 return config

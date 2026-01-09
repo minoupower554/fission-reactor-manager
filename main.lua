@@ -2,6 +2,15 @@ require('types')
 local lerp_clamp = require('components.lerp_clamp')
 local c = require('config')
 
+---@overload fun(level: string, field: string, log_message: nil)
+---@overload fun(level: string, field: nil, log_message: string)
+---@param level '"info"'|'"warn"'|'"error"'
+---@param field '"reactor_temp"'|'"reactor_cool_level_percent"'|'"turbine_prod_rate"'|'"turbine_buffer_level"'|nil
+---@param log_message string|nil
+local function queue_write(level, field, log_message)
+    os.queueEvent("screen_write", level, field, log_message)
+end
+
 local reactor = peripheral.wrap(c.reactor_logic_port_id) -- defining these outside the main function so the crash handler can use them
 local e_coolant_relay = peripheral.wrap(c.e_coolant_relay_id)
 local turbine = peripheral.wrap(c.turbine_valve_id)
@@ -195,7 +204,9 @@ local function turbine_manager()
 end
 
 local function gui_manager()
-    
+    while true do
+        local event, level, field, log_message = os.pullEvent("screen_write")
+    end
 end
 
 local function main()
