@@ -1,13 +1,16 @@
 require('types')
-local dump = require('components.dump_table')
-local lerp = require('components.lerp')
+local lerp_clamp = require('components.lerp_clamp')
 local c = require('config')
 
 local reactor = peripheral.wrap(c.reactor_logic_port_id) -- defining these outside the main function so the crash handler can use them
 local e_coolant_relay = peripheral.wrap(c.e_coolant_relay_id)
+local turbine = peripheral.wrap(c.turbine_valve_id)
+local load = peripheral.wrap(c.resistive_heater_id)
 
 ---@cast reactor ReactorPeripheral
 ---@cast e_coolant_relay RedstoneRelayPeripheral
+---@cast turbine TurbinePeripheral
+---@cast load ResistiveHeaterPeripheral
 
 local function reactor_manager()
     print("running...")
@@ -169,7 +172,26 @@ local function crash_protection(err)
 end
 
 local function turbine_manager()
-    
+    if turbine.getMaxProduction() > c.dummy_load_max*1e6 then
+        print("Warning: the dummy load maximum is lower than the production capacity of the turbine")
+    end
+
+    load.setEnergyUsage(0)
+
+    local max_energy = turbine.getMaxEnergy()
+    local start_frac = c.dummy_load_start/100
+
+    while true do
+        local current_energy = turbine.getEnergy()
+        local fill = current_energy/max_energy
+        local usage = 0
+        if fill > start_frac then
+            local t = (fill-start_frac)/(1-start_frac)
+            usage = lerp_clamp(0, c.dummy_load_max*1e6, t)
+        end
+
+        load.setEnergyUsage(usage)
+    end
 end
 
 local function gui_manager()
