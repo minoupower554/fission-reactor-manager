@@ -141,6 +141,7 @@ local function reactor_manager()
                 e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
             end
         end
+        reactor.setBurnRate(c.desired_burn_rate)
         os.sleep(0.05)
     end
 end
