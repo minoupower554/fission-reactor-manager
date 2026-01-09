@@ -16,12 +16,16 @@ local e_coolant_relay = peripheral.wrap(c.e_coolant_relay_id)
 local turbine = peripheral.wrap(c.turbine_valve_id)
 local load = peripheral.wrap(c.resistive_heater_id)
 local screen = peripheral.wrap(c.reactor_display)
-
 ---@cast reactor ReactorPeripheral
 ---@cast e_coolant_relay RedstoneRelayPeripheral
 ---@cast turbine TurbinePeripheral
 ---@cast load ResistiveHeaterPeripheral
 ---@cast screen MonitorPeripheral
+
+local trip_reset = false -- im sure using global state wont bite me later
+local reactor_state = false
+local trip = false
+local width, height = screen.getSize()
 
 local function reactor_manager()
     print("running...")
@@ -41,27 +45,20 @@ local function reactor_manager()
     local temp = 0
     local last_temp = 0
     local roc_active = false
-    local trip = false
     local e_cooling = false
     local reactor_trip_already_logged = false
-    local trip_reset_already_logged = false
     local not_enough_coolant_already_logged = false
 
     queue_write("info", "none", "trip_status", "no")
     queue_write("warn", "none", "roc_state", "disarmed")
 
     while true do
-        if rs.getInput(c.redstone_trip_reset_side) then
+        if trip_reset then
             if trip then
                 trip = false
+                trip_reset = false
                 queue_write("info", "trip reset successfully", "trip_status", "no")
                 queue_write("warn", "none", "roc_state", "disarmed")
-                trip_reset_already_logged = true
-            else
-                if not trip_reset_already_logged then
-                    print("the reactor is not tripped")
-                    trip_reset_already_logged = true
-                end
             end
         end
         if trip then
@@ -69,12 +66,12 @@ local function reactor_manager()
             if reactor.getStatus() then
                 reactor.scram()
             end
+            reactor_state = false
         end
-        if rs.getInput(c.redstone_reactor_start_side) then
+        if reactor_state then
             if not reactor.getStatus() then
                 if not trip then
                     if reactor.getCoolantFilledPercentage()>c.minimum_required_coolant/100 then
-                        trip_reset_already_logged = false
                         reactor_trip_already_logged = false
                         not_enough_coolant_already_logged = false
                         print("starting reactor")
@@ -111,13 +108,20 @@ local function reactor_manager()
         last_temp = temp
         temp = reactor.getTemperature()
         queue_write("info", "none", "reactor_temp", (round(temp-273.15, 0.1)).."C")
-        queue_write("info", "none", "reactor_cool_level_percent", (round(reactor.getCoolantFilledPercentage()*100, 0.01).."%"))
+        local coolant_level = round(reactor.getCoolantFilledPercentage()*100, 0.01)
+        if coolant_level < 10 then
+            queue_write("error", "none", "reactor_cool_level_percent", coolant_level.."%")
+        elseif coolant_level < 30 then
+            queue_write("warn", "none", "reactor_cool_level_percent", coolant_level.."%")
+        else
+            queue_write("info", "none", "reactor_cool_level_percent", coolant_level.."%")
+        end
 
         if temp>=c.overheat_cutoff then
             if trip == false then
             trip = true
             e_cooling = true
-            queue_write("info", "temperature threshold trip", "last_trip_type", "temperature threshold exceeded")
+            queue_write("info", "temperature threshold trip", "last_trip_type", "Temperature Threshold exceeded")
             end
         end
 
@@ -127,7 +131,7 @@ local function reactor_manager()
                     trip = true
                     e_cooling = true
                     queue_write("error", "none", "roc_state", "active")
-                    queue_write("info", "rate of change protection trip", "last_trip_type", "rate of change margin exceeded")
+                    queue_write("info", "rate of change protection trip", "last_trip_type", "Rate of Change Margin exceeded")
                     queue_write("info", "temperature delta: "..temp-last_temp)
                 end
             end
@@ -223,7 +227,7 @@ local function write_manager()
     screen.setTextScale(1)
     screen.setTextColor(colors.white)
     screen.setBackgroundColor(colors.black)
-    local width, height = screen.getSize()
+    screen.setCursorBlink(false)
     if width ~= 29 or height ~= 12 then
         print("the screen has to be 3x2")
         error("invalid screen size")
@@ -320,11 +324,35 @@ local function write_manager()
                 ::continue::
             end
         end
+        screen.setCursorPos(1, height)
+        if trip then
+            screen.setBackgroundColor(colors.green)
+        else
+            screen.setBackgroundColor(colors.red)
+        end
+        screen.write("TRIP RESET")
+        if reactor_state then
+            screen.setBackgroundColor(colors.red)
+        else
+            screen.setBackgroundColor(colors.green)
+        end
+        screen.setCursorPos(width-5, height)
+        screen.write("TOGGLE")
+        screen.setBackgroundColor(colors.black)
     end
 end
 
 local function press_manager()
-    
+    while true do
+        local _, monitor_id, x, y = os.pullEvent("monitor_touch")
+        if monitor_id == c.reactor_display then
+            if y == height and x<=10 then
+                trip_reset = true
+            elseif y == height and x>=width-5 then
+                reactor_state = not reactor_state
+            end
+        end
+    end
 end
 
 local function main()
