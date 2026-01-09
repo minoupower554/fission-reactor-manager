@@ -1,3 +1,4 @@
+local auto = "auto"
 local config = {}
 
 config.reactor_logic_port_id = "fissionReactorLogicAdapter_0" -- the reactor logic port id for reactor control
@@ -13,7 +14,8 @@ config.redstone_trip_reset_side = "front" -- the side on the computer to check f
 config.minimum_required_coolant = 30 -- minimum required coolant in the tank in percent
 config.turbine_valve_id = "turbineValve_1" -- the turbine valve id to use to interact with the turbine
 config.resistive_heater_id = "resistiveHeater_2" -- the resistive heater id to use as the dummy load
-config.dummy_load_start = 80 -- at what energy level in the buffer the program should start ramping up the dummy load in percent, linearly interpolated from this value to buffer maximum
-config.dummy_load_max = 3 -- the maximum energy the load is allowed to take in MJ, this is the set load when the energy buffer is at 100%, will warn if its below the maximum production of the turbine
+config.dummy_load_start = 80 -- at what energy level in the buffer the program should start ramping up the dummy load in percent, interpolated from this value to buffer maximum
+config.dummy_load_max = auto -- the maximum energy the load is allowed to take in MJ, this is the set load when the energy buffer is at 100%, set to auto for it to automatically use the turbine's maximum production rate
+config.reactor_display = "top" -- the screen to put the gui on, can be either a side or a network ID. the screen has to be 3x2 and an advanced screen
 
 return config

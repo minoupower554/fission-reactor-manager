@@ -1,25 +1,27 @@
 require('types')
 local lerp_clamp = require('components.lerp_clamp')
 local c = require('config')
+local round = require('components.round')
 
----@overload fun(level: string, field: string, log_message: nil)
----@overload fun(level: string, field: nil, log_message: string)
----@param level '"info"'|'"warn"'|'"error"'
----@param field '"reactor_temp"'|'"reactor_cool_level_percent"'|'"turbine_prod_rate"'|'"turbine_buffer_level"'|nil
----@param log_message string|nil
-local function queue_write(level, field, log_message)
-    os.queueEvent("screen_write", level, field, log_message)
+---@param level '"info"'|'"warn"'|'"error"' the log level to use, changes the colour of the field on the screen when applicable
+---@param log_message string|'"none"' the message to log, use none for no message
+---@param field '"reactor_temp"'|'"reactor_cool_level_percent"'|'"turbine_prod_rate"'|'"turbine_buffer_level"'|'"resistive_heater_load"'|nil the field to edit, nil for no field edit
+---@param value string|nil the value to set the field to, nil for no field edit
+local function queue_write(level, log_message, field, value)
+    os.queueEvent("screen_write", level, log_message, field, value)
 end
 
 local reactor = peripheral.wrap(c.reactor_logic_port_id) -- defining these outside the main function so the crash handler can use them
 local e_coolant_relay = peripheral.wrap(c.e_coolant_relay_id)
 local turbine = peripheral.wrap(c.turbine_valve_id)
 local load = peripheral.wrap(c.resistive_heater_id)
+local screen = peripheral.wrap(c.reactor_display)
 
 ---@cast reactor ReactorPeripheral
 ---@cast e_coolant_relay RedstoneRelayPeripheral
 ---@cast turbine TurbinePeripheral
 ---@cast load ResistiveHeaterPeripheral
+---@cast screen MonitorPeripheral
 
 local function reactor_manager()
     print("running...")
@@ -27,8 +29,8 @@ local function reactor_manager()
     if reactor.getStatus() then
         print("stopping reactor for initialization")
         reactor.scram()
-        print("waiting 4 seconds for reactor to stabilize post shutdown...")
-        sleep(4)
+        print("waiting 2 seconds for reactor to stabilize post shutdown...")
+        sleep(2)
     end
 
     if reactor.getMaxBurnRate() < c.desired_burn_rate then
@@ -103,6 +105,9 @@ local function reactor_manager()
         end
         last_temp = temp
         temp = reactor.getTemperature()
+        queue_write("info", "none", "reactor_temp", (round(temp-273.15, 0.1)).."C")
+        queue_write("info", "none", "reactor_cool_level_percent", (round(reactor.getCoolantFilledPercentage()*100, 0.01).."%"))
+
         if temp>=c.overheat_cutoff then
             if trip == false then
             trip = true
@@ -148,6 +153,7 @@ local function crash_protection(err)
             print("warning: emergency cooling was active and has been disabled")
             e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
         end
+        load.setEnergyUsage(0)
         return
     end
     print("fatal: the main script crashed. error: "..tostring(err))
@@ -159,6 +165,7 @@ local function crash_protection(err)
         print("warning: emergency cooling was active and has been disabled")
         e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
     end
+    load.setEnergyUsage(0)
     print("writing crash report, see current.log if the error message exceeds the frame size")
     local info = debug.getinfo(1, "S")
     local source = info.source
@@ -169,7 +176,7 @@ local function crash_protection(err)
         print("not running as file, writing to rootfs")
         source = "/"
     end
-    local path = fs.combine(source, "fission_reactor_controller_crash.log")
+    local path = fs.combine(source, "current.log")
     if fs.exists(path) then
         print("crash log already exists at '"..path.."'. overriding")
     end
@@ -181,17 +188,20 @@ local function crash_protection(err)
 end
 
 local function turbine_manager()
-    if turbine.getMaxProduction() > c.dummy_load_max*1e6 then
-        print("Warning: the dummy load maximum is lower than the production capacity of the turbine")
-    end
-
     load.setEnergyUsage(0)
 
     local max_energy = turbine.getMaxEnergy()
+    if c.dummy_load_max == "auto" then
+        c.dummy_load_max = turbine.getMaxProduction()/1e6
+    end
+    if turbine.getMaxProduction() > c.dummy_load_max*1e6 then
+        print("Warning: the dummy load maximum is lower than the production capacity of the turbine")
+    end
     local start_frac = c.dummy_load_start/100
 
     while true do
         local current_energy = turbine.getEnergy()
+        queue_write("info", "none", "turbine_buffer_level", (round(current_energy/1e6, 1)).."MJ")
         local fill = current_energy/max_energy
         local usage = 0
         if fill > start_frac then
@@ -200,17 +210,74 @@ local function turbine_manager()
         end
 
         load.setEnergyUsage(usage)
+        queue_write("info", "none", "resistive_heater_load", (round(usage/1e3, 0.1)).."kJ/t")
+        queue_write("info", "none", "turbine_prod_rate", (round(turbine.getProductionRate()/1e3, 1)).."kJ/t")
     end
 end
 
-local function gui_manager()
-    while true do
-        local event, level, field, log_message = os.pullEvent("screen_write")
+local function write_manager()
+    screen.setTextScale(1)
+    screen.setTextColor(colors.white)
+    screen.setBackgroundColor(colors.black)
+    local width, height = screen.getSize()
+    if width ~= 29 or height ~= 12 then
+        print("the screen has to be 3x2")
+        error("invalid screen size")
     end
+
+    local fields = {reactor_temp="0N/A", reactor_cool_level_percent="0N/A", turbine_prod_rate="0N/A", turbine_buffer_level="0N/A", resistive_heater_load="0N/A"}
+    local pretty_print = {reactor_temp="Reactor Temperature: ", 
+        reactor_cool_level_percent="Reactor Coolant Level: ", 
+        turbine_prod_rate="Turbine Production: ", 
+        turbine_buffer_level="Turbine Power Level: ", 
+        resistive_heater_load="Dummy Load Usage: "
+    }
+
+    while true do
+        screen.setCursorPos(1, 1)
+        local _, level, log_message, field, value = os.pullEvent("screen_write")
+        if field then
+            if level == "info" then
+                fields[field] = "0"..value
+            elseif level == "warn" then
+                fields[field] = "1"..value
+            else
+                fields[field] = "e"..value
+            end
+        end
+        if log_message ~= "none" then
+            if level == "info" then
+                print(log_message)
+            elseif level == "warn" then
+                term.setTextColor(colors.orange)
+                print(log_message)
+                term.setTextColor(colors.white)
+            else
+                term.setTextColor(colors.red)
+                print(log_message)
+                term.setTextColor(colors.white)
+            end
+        end
+
+        local i = 0
+        screen.clear()
+        for k, v in pairs(fields) do
+            i = i + 1
+            screen.setCursorPos(1, i)
+            local str = v:sub(2)
+            local print_string = pretty_print[k]..str
+            local blit = v:sub(1, 1):rep(print_string:len())
+            screen.blit(print_string, blit, ("f"):rep(print_string:len()))
+        end
+    end
+end
+
+local function press_manager()
+    
 end
 
 local function main()
-    parallel.waitForAll(reactor_manager, turbine_manager, gui_manager)
+    parallel.waitForAll(reactor_manager, turbine_manager, write_manager, press_manager)
 end
 
 xpcall(main, crash_protection)
