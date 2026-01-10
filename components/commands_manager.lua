@@ -5,7 +5,7 @@ local trim = require('components.trim')
 return function()
     while true do
         local _, user, msg, _, hidden, _ = os.pullEvent("chat")
-        if user:lower() == c.username and hidden then ---@diagnostic disable-line
+        if user:lower() == c.username:lower() and hidden then ---@diagnostic disable-line
             msg = trim(msg)
             if msg == "reactor start" then
                 if not s.reactor_state then
