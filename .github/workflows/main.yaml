@@ -1,5 +1,8 @@
 name: run Makefile
 
+permissions:
+  contents: write
+
 on:
     push:
         branches:
