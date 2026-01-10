@@ -1,4 +1,4 @@
-name: run Makefile
+name: Build
 
 permissions:
   contents: write
