@@ -4,3 +4,4 @@ New-Item -ItemType Directory -Path components -Force
 (Get-Content main.lua) -replace "require\('types'\)","-- require('types')" | Set-Content 'dist\main.lua'
 Copy-Item -Recurse -Path components -Destination 'dist\components'
 Copy-Item -Path config.lua -Destination dist
+Compress-Archive -Path dist -DestinationPath dist\FissionReactorController.zip
