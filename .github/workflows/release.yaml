@@ -1,0 +1,30 @@
+name: make release
+
+on:
+    push:
+        tags:
+            - 'v*'
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6.0.1
+            - name: Get Title
+              id: taginfo
+              run: |
+                TAG=${GITHUB_REF#refs/tags/}
+                MSG=$(git tag -l "$TAG" -n99999)
+                MSG=${MSG#*$TAG }
+                echo "tag=$TAG" >> $GITHUB_OUTPUT
+                echo "msg=$MSG" >> $GITHUB_OUTPUT
+            - name: Create a Release
+              uses: actions/create-release@1.1.4
+              env:
+                GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                tag_name: ${{ steps.taginfo.outputs.tag }}
+                release_name: Release ${{ steps.taginfo.outputs.tag }}
+                body: ${{ steps.taginfo.outputs.msg }}
+                draft: false
+                prerelease: false

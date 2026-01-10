@@ -1,0 +1,16 @@
+name: run Makefile
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    build:
+        runs-on: windows-latest
+        steps:
+            - uses:  actions/checkout@v6.0.1
+            - name: Install PowerShell
+              uses: PowerShell/PowerShell@v7.5.4
+            - name: Run Build
+              run: pwsh .\build.ps1
