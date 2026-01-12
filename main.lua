@@ -1,6 +1,9 @@
 require('types') ---#remove
+local round = require('components.round') ---#include
+local lerp_clamp = require('components.lerp_clamp') ---#include
+local trim = require('components.trim') ---#include
 local c = require('config')
-local s = require('components/state') ---#include
+local s = require('components.state') ---#include
 local crash_protection = require('modules.crash_handler') ---#include
 local reactor_manager = require('modules.reactor_manager') ---#include
 local turbine_manager = require('modules.turbine_manager') ---#include
