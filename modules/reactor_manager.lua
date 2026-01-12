@@ -5,6 +5,7 @@ local round = require('components.round')
 return function()
     if s.reactor.getStatus() then
         s.queue_write("warn", "restarted from assumed server restart")
+        s.reactor_state = true
     end
 
     if s.reactor.getMaxBurnRate() < c.desired_burn_rate then
