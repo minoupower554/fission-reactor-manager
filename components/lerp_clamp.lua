@@ -8,5 +8,5 @@ return function(start, stop, factor)
     elseif factor > 1 then
         factor = 1
     end
-    return require('components.lerp')(start, stop, factor)
+    return start+(stop-start)*factor
 end
