@@ -28,7 +28,9 @@ jobs:
                 MSG=$(git tag -l "$TAG" -n99999)
                 MSG=${MSG#*$TAG }
                 echo "tag=$TAG" >> $GITHUB_OUTPUT
-                echo "msg=$MSG" >> $GITHUB_OUTPUT
+                echo "msg<<EOF" >> $GITHUB_OUTPUT
+                echo "$MSG" >> $GITHUB_OUTPUT
+                echo "EOF" >> $GITHUB_OUTPUT
                 echo "message: $MSG, tag: $TAG"
             - name: Create a Release
               uses: actions/create-release@v1.1.4
