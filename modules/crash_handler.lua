@@ -33,15 +33,15 @@ return function(err)
     s.load.setEnergyUsage(0)
     print("writing crash report, see last_crash.log")
     local info = debug.getinfo(1, "S")
-    local source = info.source
-    if source:sub(1,1) == "@" then
-        source = source:sub(2)
-        source = fs.getDir(source)
+    local src = info.source
+    if src:sub(1,1) == "@" then
+        src = src:sub(2)
+        src = fs.getDir(src)
     else
         print("not running as file, writing to rootfs")
-        source = "/"
+        src = "/"
     end
-    local path = fs.combine(source, "last_crash.log")
+    local path = fs.combine(src, "last_crash.log")
     local handle = fs.open(path, "w")
     if handle then
         handle.writeLine(tostring(err))

@@ -1,11 +1,12 @@
-require('types')
+require('types') ---#remove
 local c = require('config')
-local crash_protection = require('components.crash_handler')
-local reactor_manager = require('components.reactor_manager')
-local turbine_manager = require('components.turbine_manager')
-local write_manager = require('components.write_manager')
-local press_manager = require('components.press_manager')
-local chat_command_manager = require('components.commands_manager')
+local s = require('components/state') ---#include
+local crash_protection = require('modules.crash_handler') ---#include
+local reactor_manager = require('modules.reactor_manager') ---#include
+local turbine_manager = require('modules.turbine_manager') ---#include
+local write_manager = require('modules.write_manager') ---#include
+local press_manager = require('modules.press_manager') ---#include
+local chat_command_manager = require('modules.commands_manager') ---#include
 
 local function main()
     if c.enable_chat_box and c.chat_box_commands then
