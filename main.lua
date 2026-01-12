@@ -1,3 +1,4 @@
+sleep(1) -- avoid crashing on nil peripherals when rebooting after server restart
 require('types') ---#remove
 local round = require('components.round') ---#include
 local lerp_clamp = require('components.lerp_clamp') ---#include

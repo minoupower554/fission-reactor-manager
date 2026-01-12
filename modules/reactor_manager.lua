@@ -6,10 +6,7 @@ return function()
     print("running...")
 
     if s.reactor.getStatus() then
-        print("stopping reactor for initialization")
-        s.reactor.scram()
-        print("waiting 2 seconds for reactor to stabilize post shutdown...")
-        sleep(2)
+        s.queue_write("warn", "restarted from assumed server restart")
     end
 
     if s.reactor.getMaxBurnRate() < c.desired_burn_rate then
