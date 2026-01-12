@@ -3,8 +3,6 @@ local c = require('config')
 local round = require('components.round')
 
 return function()
-    print("running...")
-
     if s.reactor.getStatus() then
         s.queue_write("warn", "restarted from assumed server restart")
     end
