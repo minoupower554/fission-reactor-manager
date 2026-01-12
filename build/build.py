@@ -3,6 +3,7 @@ import os
 import shutil
 import random
 import string
+import zipfile
 
 used_names = set()
 def random_string(length):
@@ -83,6 +84,11 @@ def main():
 
     with open("./dist/main.lua", "w") as f:
         f.writelines(stripped)
+    
+    with zipfile.ZipFile("./dist/FissionReactorController.zip", 'w', zipfile.ZIP_DEFLATED) as z:
+        os.chdir("./dist")
+        z.write("./main.lua")
+        z.write("./config.lua")
 
 if __name__ == "__main__":
     main()
