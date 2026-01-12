@@ -27,7 +27,14 @@ return function()
 
         s.load.setEnergyUsage(usage)
         s.queue_write("info", "none", "resistive_heater_load", (round(usage/1e3, 0.1)).."kJ/t")
-        s.queue_write("info", "none", "turbine_prod_rate", (round(s.turbine.getProductionRate()/1e3, 0.1)).."kJ/t")
+        local current_prod = s.turbine.getProductionRate()
+        local prod_print = ""
+        if current_prod > 1000*1e3 then
+            prod_print = (round(current_prod/1e6, 0.1)).."MJ/t"
+        else
+            prod_print = (round(current_prod/1e3, 0.1)).."kJ/t"
+        end
+        s.queue_write("info", "none", "turbine_prod_rate", prod_print)
         os.sleep(0.05)
     end
 end
