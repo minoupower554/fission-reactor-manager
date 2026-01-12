@@ -3,15 +3,13 @@ import os
 import shutil
 import random
 import string
-import luaparser.ast as ast
-from luaparser.astnodes import *
 
 used_names = set()
 def random_string(length):
     first_chars = string.ascii_letters+"_"
     other_chars = first_chars+string.digits
-    result = ""
     while True:
+        result = ""
         for i in range(length):
             if i==0:
                 result += random.choice(first_chars)
@@ -33,7 +31,7 @@ def inline(lines: list[str]) -> list[str]:
             without_var = r"""require\(['\"]([^'\"]+)['\"]\)\s*---#(include|remove)"""
             without_var_match = re.search(without_var, v)
             if without_var_match:
-                matches[i] = {"var_name": None, "mod_path": without_var_match.group(1), "action": without_var_match.group(2)}
+                matches[i] = {"var_name": None, "mod_path": without_var_match.group(1), "action": without_var_match.group(2)} # type: ignore
 
     matches = dict(reversed(list(matches.items()))) # make it bottom to top to avoid line shifting
 
@@ -63,95 +61,6 @@ def inline(lines: list[str]) -> list[str]:
         new_lines[k:k+1] = cleared_lines
 
     return new_lines
-
-
-def minify(code: list[str]) -> list[str]: # i gave up on this. lua ast is like lua tables, one thing to "simplify" stuff, so generalized it's a pain to work with
-    blacklist = {"debug", "os", "fs", "term", "peripheral", "textutils", "colors", "colours"}
-    parsed = ast.parse(''.join(code))
-    variables: dict[str, dict[str, str|int]] = {}
-    functions: dict[str, dict[str, str|int]] = {}
-    for node in ast.walk(parsed): # read pass
-        if isinstance(node, LocalAssign): # ignore globals
-            for v in node.targets:
-                if not v.id in variables and len(v.id)>3: # if the name is already in here for a new identifier they were already shadowed/unrelated
-                    variables[v.id] = {"shortened": random_string(3)}
-        elif isinstance(node, LocalFunction): # ignore globals again
-            if not node.name.id in functions: functions[node.name.id] = {"shortened": random_string(2)}
-            for v in node.args:
-                if not v.id in variables and len(v.id)>3:
-                    variables[v.id] = {"shortened": random_string(3)}
-        elif isinstance(node, Function):
-            if not isinstance(node.name, Index) and not node.name.id in functions:
-                functions[node.name.id] = {"shortened": random_string(2)}
-            for v in node.args:
-                if not v.id in variables and len(v.id)>3:
-                    variables[v.id] = {"shortened": random_string(3)}
-        # elif isinstance(node, Call):
-        #     for v in node.args:
-        #         if isinstance(v, Name) and not v.id in variables and len(v.id)>3:
-        #             variables[v.id] = {"shortened": random_string(3)}
-
-    for node in ast.walk(parsed): # mutate pass
-        if isinstance(node, Call):
-            if not isinstance(node.func, Index):
-                if node.func.id in functions:
-                    node.func.id = functions[node.func.id]["shortened"]
-            for v in node.args:
-                if isinstance(v, Name):
-                    if v.id in variables:
-                        v.id = variables[v.id]["shortened"]
-                    elif v.id in functions:
-                        v.id = functions[v.id]["shortened"]
-        elif isinstance(node, LocalAssign):
-            for v in node.targets:
-                if isinstance(v, Name):
-                    if v.id in variables:
-                        v.id = variables[v.id]["shortened"]
-                    elif v.id in functions:
-                        v.id = functions[v.id]["shortened"]
-
-            for v in node.values:
-                if isinstance(v, Name):
-                    if v.id in variables:
-                        v.id = variables[v.id]["shortened"]
-                    elif v.id in functions:
-                        v.id = functions[v.id]["shortened"]
-                elif isinstance(v, Index):
-                    if v.value.id in variables:
-                        v.value.id = variables[v.value.id]["shortened"]
-                    elif v.value.id in functions:
-                        v.value.id = functions[v.value.id]["shortened"]
-        elif isinstance(node, LocalFunction):
-            if node.name.id in functions:
-                node.name.id = functions[node.name.id]["shortened"]
-            for v in node.args:
-                if isinstance(v, Name):
-                    if v.id in variables:
-                        v.id = variables[v.id]["shortened"]
-                    elif v.id in functions:
-                        v.id = functions[v.id]["shortened"]
-        elif isinstance(node, Function):
-            if not isinstance(node.name, Index) and node.name.id in functions:
-                node.name.id = functions[node.name.id]["shortened"]
-            for v in node.args:
-                if isinstance(v, Name):
-                    if v.id in variables:
-                        v.id = variables[v.id]["shortened"]
-                    elif v.id in functions:
-                        v.id = functions[v.id]["shortened"]
-        elif isinstance(node, Invoke):
-            if isinstance(node.source, Name) and node.source.id in variables:
-                node.source.id = variables[node.source.id]["shortened"]
-            for v in node.args:
-                if isinstance(v, Name):
-                    if v.id in variables:
-                        v.id = variables[v.id]["shortened"]
-                    elif v.id in functions:
-                        v.id = functions[v.id]["shortened"]
-        elif isinstance(node, If):...
-
-
-    return ast.to_lua_source(parsed).split("\n")
 
 
 def strip_whitespaces(code: list[str]) -> list[str]:
