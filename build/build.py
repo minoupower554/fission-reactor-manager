@@ -67,6 +67,7 @@ def inline(lines: list[str]) -> list[str]:
 def strip_whitespaces(code: list[str]) -> list[str]:
     result = ["--[[THIS HAS BEEN BUNDLED BY A CUSTOM LUA BUNDLER]]"]
     for line in code:
+        if not line.strip(): continue
         result.append(line.strip()+" ")
     return result
 
