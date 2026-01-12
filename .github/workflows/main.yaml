@@ -27,7 +27,7 @@ jobs:
                 TAG=${GITHUB_REF#refs/tags/}
                 MSG=$(git tag -l "$TAG" -n99999)
                 MSG=${MSG#*$TAG }
-                MSG=$(echo "$MSG" | sed 's/^            //')
+                MSG=$(echo "$MSG" | sed 's/^[[:space:]]*//')
                 echo "tag=$TAG" >> $GITHUB_OUTPUT
                 echo "msg<<EOF" >> $GITHUB_OUTPUT
                 echo "$MSG" >> $GITHUB_OUTPUT
