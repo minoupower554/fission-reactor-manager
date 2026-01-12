@@ -4,3 +4,4 @@ types/.vscode
 current.log
 last_crash.log
 dist/
+.idea
