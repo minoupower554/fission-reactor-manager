@@ -14,6 +14,7 @@ local press_manager = require('modules.press_manager') ---#include
 local chat_command_manager = require('modules.commands_manager') ---#include
 
 local function main()
+    print("controller alive")
     if c.enable_chat_box and c.chat_box_commands then
         parallel.waitForAll(reactor_manager, turbine_manager, write_manager, press_manager, chat_command_manager)
     else

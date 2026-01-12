@@ -5,6 +5,7 @@ local round = require('components.round')
 return function()
     if s.reactor.getStatus() then
         s.queue_write("warn", "restarted from assumed server restart")
+        s.queue_write("warn", "rate of change protection armed", "roc_state", "armed")
         s.reactor_state = true
     end
 
@@ -25,10 +26,12 @@ return function()
         if s.trip_reset then
             if s.trip then
                 s.trip = false
-                s.trip_reset = false
                 s.queue_write("info", "trip reset successfully", "trip_status", "no")
                 s.queue_write("warn", "none", "roc_state", "disarmed")
+            else
+                s.queue_write("warn", "the reactor is not tripped")
             end
+            s.trip_reset = false
         end
         if s.trip then
             s.queue_write("error", "none", "trip_status", "yes")
