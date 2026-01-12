@@ -55,12 +55,15 @@ def inline(lines: list[str]) -> list[str]:
                     line = "local function "+v["var_name"]+line[len("return function"):]
                 elif line.startswith("return "): # named returns
                     continue
-                if "--" in line:
-                    line = line.split("--")[0] # this will 100% eat strings im just too lazy to fix it
+                
                 cleared_lines.append(line)
 
         new_lines[k:k+1] = cleared_lines
 
+    for i, v in enumerate(new_lines):
+        if "--" in v:
+            new_lines[i] = v.split("--")[0] # this will 100% eat strings im just too lazy to fix it
+    
     return new_lines
 
 
