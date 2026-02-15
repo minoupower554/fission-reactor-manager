@@ -12,6 +12,7 @@ local turbine_manager = require('modules.turbine_manager') ---#include
 local write_manager = require('modules.write_manager') ---#include
 local press_manager = require('modules.press_manager') ---#include
 local chat_command_manager = require('modules.commands_manager') ---#include
+local setup = require('setup') ---#include
 
 local function main()
     print("controller alive")
@@ -21,5 +22,7 @@ local function main()
         parallel.waitForAll(reactor_manager, turbine_manager, write_manager, press_manager)
     end
 end
+
+setup() -- call outside crash handler
 
 xpcall(main, crash_protection)
