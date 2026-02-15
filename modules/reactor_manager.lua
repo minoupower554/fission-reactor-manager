@@ -18,6 +18,7 @@ return function()
     local last_temp = 0
     local roc_active = false
     local e_cooling = false
+    s.e_coolant_relay.setOutput(c.e_coolant_relay_side, true)
 
     s.queue_write("info", "none", "trip_status", "no")
     s.queue_write("warn", "none", "roc_state", "disarmed")
@@ -104,12 +105,12 @@ return function()
         end
 
         if e_cooling then
-            s.e_coolant_relay.setOutput(c.e_coolant_relay_side, true)
+            s.e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
         end
-        if s.e_coolant_relay.getOutput(c.e_coolant_relay_side) then
+        if not s.e_coolant_relay.getOutput(c.e_coolant_relay_side) then
             if temp < c.e_coolant_disable then
                 e_cooling = false
-                s.e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
+                s.e_coolant_relay.setOutput(c.e_coolant_relay_side, true)
             end
         end
         s.reactor.setBurnRate(c.desired_burn_rate)

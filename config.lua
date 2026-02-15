@@ -6,7 +6,7 @@ local config = {}
 -- IMPORTANT: all chunks where the computer and reactor operates (this includes chunks where only cables go through) have to be chunk-loaded so that the computer doesn't get killed
 
 config.reactor_logic_port_id = "fissionReactorLogicAdapter_0" -- the reactor logic port id for reactor control
-config.e_coolant_relay_id = "redstone_relay_3" -- the redstone relay id for the emergency cooling, make sure you have a torch to invert the signal as it activates the redstone signal when requesting emergency cooling.
+config.e_coolant_relay_id = "redstone_relay_3" -- the redstone relay id for the emergency cooling. a redstone torch is not required as it disables the relay when requesting cooling
 config.e_coolant_relay_side = side.front -- the side to toggle the emergency cooling reservoir injection on the redstone relay. any `side` option is accepted
 config.desired_burn_rate = 1 -- in millibuckets per tick
 config.startup_timeout = 0.5 -- the timeframe in seconds between reactor startup and when rate of change protection activates, adjust this if your reactor takes longer to start
