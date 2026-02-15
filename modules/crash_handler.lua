@@ -9,9 +9,9 @@ return function(err)
             print("shutting down reactor")
             s.reactor.scram()
         end
-        if s.e_coolant_relay.getOutput(c.e_coolant_relay_side) then
+        if not s.e_coolant_relay.getOutput(c.e_coolant_relay_side) then
             print("warning: emergency cooling was active and has been disabled")
-            s.e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
+            s.e_coolant_relay.setOutput(c.e_coolant_relay_side, true)
         end
         s.load.setEnergyUsage(0)
         return
@@ -26,9 +26,9 @@ return function(err)
         print("scramming reactor")
         s.reactor.scram()
     end
-    if s.e_coolant_relay.getOutput(c.e_coolant_relay_side) then
+    if not s.e_coolant_relay.getOutput(c.e_coolant_relay_side) then
         print("warning: emergency cooling was active and has been disabled")
-        s.e_coolant_relay.setOutput(c.e_coolant_relay_side, false)
+        s.e_coolant_relay.setOutput(c.e_coolant_relay_side, true)
     end
     s.load.setEnergyUsage(0)
     print("writing crash report, see last_crash.log")
