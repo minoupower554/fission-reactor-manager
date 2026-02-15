@@ -30,9 +30,17 @@ return function()
         local current_prod = s.turbine.getProductionRate()
         local prod_print = ""
         if current_prod > 1000*1e3 then
-            prod_print = (round(current_prod/1e6, 0.1)).."MJ/t"
+            if current_prod > 99.99*1e6 then
+                prod_print = (round(current_prod/1e6, 0.1)).."MJ/t"
+            else
+                prod_print = (round(current_prod/1e6, 0.01)).."MJ/t"
+            end
         else
-            prod_print = (round(current_prod/1e3, 0.1)).."kJ/t"
+            if current_prod > 99.99*1e3 then
+                prod_print = (round(current_prod/1e3, 0.1)).."kJ/t"
+            else
+                prod_print = (round(current_prod/1e3, 0.01)).."kJ/t"
+            end
         end
         s.queue_write("info", "none", "turbine_prod_rate", prod_print)
         os.sleep(0.05)
